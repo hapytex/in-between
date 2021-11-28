@@ -13,6 +13,10 @@ data Semibound a
   = Lower (ElementaryBound a)
   | Upper (ElementaryBound a)
 
+toElementaryInterval :: Semibound a -> ElementaryInterval a
+toElementaryInterval (Lower l) = ElementaryInterval l Infinity
+toElementaryInterval (Upper u) = ElementaryInterval Infinity u
+
 data ElementaryInterval a = ElementaryInterval (ElementaryBound a) (ElementaryBound a)
 
 leftCheck :: Ord a => ElementaryBound a -> a -> Bool
@@ -42,6 +46,4 @@ instance Show a => ShowInterval (ElementaryInterval a) where
           fr Infinity = ('+' :) . ('∞' :) .  (')' :)
 
 instance Show a => ShowInterval (Semibound a) where
-  showInterval' p = go
-      where go (Lower l) = showInterval' p (ElementaryInterval l Infinity)
-            go (Upper u) = showInterval' p (ElementaryInterval Infinity u)
+  showInterval' p = showInterval' p . toElementaryInterval
