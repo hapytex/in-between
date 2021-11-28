@@ -1,23 +1,42 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFunctor, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses #-}
 
 module Data.Interval.Elementary where
 
 import Data.Interval.Core(HasMembershipCheck(isAnElementOf), ShowInterval(showInterval'))
 
+-- | One of the parts of an elementary bound. The 'ElementaryBound' can be applied to the
+-- lowerbound of the interval, or the upperbound of the interval.
 data ElementaryBound a
-  = Open a
-  | Closed a
-  | Infinity
+  = Open a  -- ^ An open bound a that describes that the given value is /not/ an element of the interval.
+  | Closed a  -- ^ A closed bound that describes that the given value is an element of the interval.
+  | Infinity  -- ^ 'Infinity' is used to describe that that part of the bound puts no constraint on the interval.
+  deriving (Eq, Functor, Show)
 
+-- | An interval that is /only/ bounded by a /lowerbound/ or /upperbound/.
 data Semibound a
-  = Lower (ElementaryBound a)
-  | Upper (ElementaryBound a)
+  = Lower (ElementaryBound a)  -- ^ An interval only bounded by the /lowerbound/.
+  | Upper (ElementaryBound a)  -- ^ An interval only bounded by the /upperbound/.
+  deriving (Eq, Functor, Show)
 
-toElementaryInterval :: Semibound a -> ElementaryInterval a
-toElementaryInterval (Lower l) = ElementaryInterval l Infinity
-toElementaryInterval (Upper u) = ElementaryInterval Infinity u
+class IsElementaryInterval i a | i -> a where
+  toElementaryInterval :: i -> ElementaryInterval a
+  {-# MINIMAL toElementaryInterval #-}
 
-data ElementaryInterval a = ElementaryInterval (ElementaryBound a) (ElementaryBound a)
+instance IsElementaryInterval (ElementaryInterval a) a where
+  toElementaryInterval = id
+
+instance IsElementaryInterval (Semibound a) a where
+  toElementaryInterval (Lower l) = ElementaryInterval l Infinity
+  toElementaryInterval (Upper u) = ElementaryInterval Infinity u
+
+data ElementaryInterval a
+  = ElementaryInterval (ElementaryBound a) (ElementaryBound a)
+  deriving (Eq, Functor, Show)
+
+toBound :: ElementaryBound a -> [a] -> [a]
+toBound (Open a) = (a:)
+toBound (Closed a) = (a:)
+toBound Infinity = id
 
 leftCheck :: Ord a => ElementaryBound a -> a -> Bool
 leftCheck (Open x) = (x <)
@@ -33,8 +52,9 @@ instance Ord a => HasMembershipCheck (ElementaryInterval a) a where
   isAnElementOf x (ElementaryInterval l u) = leftCheck l x && rightCheck u x
 
 instance Ord a => HasMembershipCheck (Semibound a) a where
-  isAnElementOf x (Lower l) = leftCheck l x
-  isAnElementOf x (Upper u) = rightCheck u x
+  isAnElementOf x = go
+    where go (Lower l) = leftCheck l x
+          go (Upper u) = rightCheck u x
 
 instance Show a => ShowInterval (ElementaryInterval a) where
   showInterval' _ (ElementaryInterval ga gb) = fl ga . (',' :) . fr gb
