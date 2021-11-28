@@ -11,6 +11,14 @@ class HasMembershipCheck i a | i -> a where
 
     {-# MINIMAL isAnElementOf | isNotAnElementOf #-}
 
+class ShowInterval i where
+    showInterval :: i -> String
+    showInterval = flip (showInterval' 0) ""
+
+    showInterval' :: Int -> i -> ShowS
+    showInterval' _ = (++) . showInterval
+    {-# MINIMAL showInterval | showInterval' #-}
+
 (∈) :: HasMembershipCheck i a => a -> i -> Bool
 (∈) = isAnElementOf
 

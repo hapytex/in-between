@@ -2,7 +2,7 @@
 
 module Data.Interval.Elementary where
 
-import Data.Interval.Core(HasMembershipCheck(isAnElementOf))
+import Data.Interval.Core(HasMembershipCheck(isAnElementOf), ShowInterval(showInterval'))
 
 data ElementaryBound a
   = Open a
@@ -32,14 +32,16 @@ instance Ord a => HasMembershipCheck (Semibound a) a where
   isAnElementOf x (Lower l) = leftCheck l x
   isAnElementOf x (Upper u) = rightCheck u x
 
-showInterval :: Show a => ElementaryInterval a -> String
-showInterval = flip (showInterval' 0) ""
+instance Show a => ShowInterval (ElementaryInterval a) where
+  showInterval' _ (ElementaryInterval ga gb) = fl ga . (',' :) . fr gb
+    where fl (Open v) = ('(' :) . showsPrec 0 v
+          fl (Closed v) = ('[' :) . showsPrec 0 v
+          fl Infinity = ('(' : ) . ('−' : ) . ('∞' :)
+          fr (Open v) = showsPrec 0 v .  (')' :)
+          fr (Closed v) = showsPrec 0 v .  (']' :)
+          fr Infinity = ('+' :) . ('∞' :) .  (')' :)
 
-showInterval' :: Show a => Int -> ElementaryInterval a -> ShowS
-showInterval' _ (ElementaryInterval ga gb) = fl ga . (',' :) . fr gb
-  where fl (Open v) = ('(' :) . showsPrec 0 v
-        fl (Closed v) = ('[' :) . showsPrec 0 v
-        fl Infinity = ('(' : ) . ('−' : ) . ('∞' :)
-        fr (Open v) = showsPrec 0 v .  (')' :)
-        fr (Closed v) = showsPrec 0 v .  (']' :)
-        fr Infinity = ('+' :) . ('∞' :) .  (')' :)
+instance Show a => ShowInterval (Semibound a) where
+  showInterval' p = go
+      where go (Lower l) = showInterval' p (ElementaryInterval l Infinity)
+            go (Upper u) = showInterval' p (ElementaryInterval Infinity u)
