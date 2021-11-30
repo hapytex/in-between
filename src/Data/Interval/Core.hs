@@ -19,6 +19,13 @@ class ShowInterval i where
   showInterval' _ = (++) . showInterval
   {-# MINIMAL showInterval | showInterval' #-}
 
+class IntervalMap i a b | i -> a, i -> b where
+  intervalLookup :: i -> a -> b
+  intervalLookup = intervalLookupWith (:) []
+
+  intervalLookupWith :: (b -> c -> c) -> c -> i -> a -> c
+  intervalLookupWith f z i = foldr f z . intervalLookup i
+
 (∈) :: HasMembershipCheck i a => a -> i -> Bool
 (∈) = isAnElementOf
 
