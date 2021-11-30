@@ -20,7 +20,7 @@ class ShowInterval i where
   {-# MINIMAL showInterval | showInterval' #-}
 
 class IntervalMap i a b | i -> a, i -> b where
-  intervalLookup :: i -> a -> b
+  intervalLookup :: i -> a -> [b]
   intervalLookup = intervalLookupWith (:) []
 
   intervalLookupWith :: (b -> c -> c) -> c -> i -> a -> c
