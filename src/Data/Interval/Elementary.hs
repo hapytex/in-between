@@ -58,11 +58,11 @@ instance Ord a => HasMembershipCheck (Semibound a) a where
 
 instance Show a => ShowInterval (ElementaryInterval a) where
   showInterval' _ (ElementaryInterval ga gb) = fl ga . (',' :) . fr gb
-    where fl (Open v) = ('(' :) . showsPrec 0 v
-          fl (Closed v) = ('[' :) . showsPrec 0 v
+    where fl (Open v) = ('(' :) . showsPrec 10 v
+          fl (Closed v) = ('[' :) . showsPrec 10 v
           fl Infinity = ('(' : ) . ('−' : ) . ('∞' :)
-          fr (Open v) = showsPrec 0 v .  (')' :)
-          fr (Closed v) = showsPrec 0 v .  (']' :)
+          fr (Open v) = showsPrec 10 v .  (')' :)
+          fr (Closed v) = showsPrec 10 v .  (']' :)
           fr Infinity = ('+' :) . ('∞' :) .  (')' :)
 
 instance Show a => ShowInterval (Semibound a) where

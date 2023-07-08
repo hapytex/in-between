@@ -17,9 +17,7 @@ fromList = undefined
 
 getListItems :: Ord a => [(ElementaryInterval a, b)] -> [(a, (Semibound a, b))]
 getListItems = sortOn fst . foldr toBounds []
-  where toBounds (ElementaryInterval la lr, y) = gol la . gor lr
+  where toBounds (ElementaryInterval la lr, y) = go Lower la . go Upper lr
           where go _ Infinity = id
                 go f v@(Open x) = ((x, (f v, y)) :)
                 go f v@(Closed x) = ((x, (f v, y)) :)
-                gol = go Lower
-                gor = go Upper
