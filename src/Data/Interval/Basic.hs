@@ -36,6 +36,7 @@ instance Num a => Num (Two a) where
 
 instance Fractional a => Fractional (Two a) where
   (/) = liftA2 (/)
+  fromRational = One . fromRational
 
 _toFirst :: Two a -> Two a
 _toFirst None = None
@@ -164,6 +165,11 @@ elementBounded _ = True
 data BasicInterval a
   = BasicInterval (BoundElement a) (BoundElement a)
   deriving (Eq, Read, Show)
+
+instance Ord a => Ord (BasicInterval a) where
+  compare b1 b2 = compare l1 l2 <> compare u1 u2
+    where ~(l1, u1) = toBounds b1
+          ~(l2, u2) = toBounds b2
 
 toBounds :: BasicInterval a -> (LowerBound a, UpperBound a)
 toBounds (BasicInterval l u) = (LowerBound l, UpperBound u)
