@@ -9,7 +9,7 @@ module Data.Interval.Basic where
 data Two a
   = None
   | One a
-  | Two a
+  | Two a a
   deriving (Eq, Functor, Read, Show)
 
 data BoundElement a
@@ -127,6 +127,12 @@ instance Ord a => Semigroup (BasicInterval a) where
 
 instance Ord a => Monoid (BasicInterval a) where
   mempty = Full
+
+oppositeInterval :: BasicInterval a -> Two (BasicInterval a)
+oppositeInterval Full = None
+oppositeInterval (Lower i) = One (Upper (_mirror i))
+oppositeInterval (Upper i) = One (Lower (_mirror i))
+oppositeInterval (BasicInterval l u) = Two (Lower (_mirror l)) (Upper (_mirror u))
 
 pattern Lower, Upper :: BoundElement a -> BasicInterval a
 pattern Lower x = BasicInterval x Infinity
