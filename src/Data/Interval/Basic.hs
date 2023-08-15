@@ -6,11 +6,65 @@
 
 module Data.Interval.Basic where
 
+import Control.Applicative(liftA2)
+
 data Two a
   = None
   | One a
   | Two a a
   deriving (Eq, Functor, Read, Show)
+
+instance Semigroup a => Semigroup (Two a) where
+  None <> _ = None
+  _ <> None = None
+  One x <> One y = One (x <> y)
+  One x <> Two y1 y2 = Two (x <> y1) (x <> y2)
+  Two x1 x2 <> One y = Two (x1 <> y) (x2 <> y)
+  Two x1 x2 <> Two y1 y2 = Two (x1 <> y1) (x2 <> y2)
+
+instance Monoid a => Monoid (Two a) where
+  mempty = One mempty
+
+instance Num a => Num (Two a) where
+  (+) = liftA2 (+)
+  (-) = liftA2 (-)
+  (*) = liftA2 (*)
+  negate = fmap negate
+  abs = fmap abs
+  signum = fmap signum
+  fromInteger = One . fromInteger
+
+instance Fractional a => Fractional (Two a) where
+  (/) = liftA2 (/)
+
+_toFirst :: Two a -> Two a
+_toFirst None = None
+_toFirst o@(One _) = o
+_toFirst (Two x _) = One x
+
+_toSecond :: Two a -> Two a
+_toSecond None = None
+_toSecond o@(One _) = o
+_toSecond (Two _ x) = One x
+
+instance Applicative Two where
+  pure = One
+  None <*> _ = None
+  _ <*> None = None
+  One f <*> One x = One (f x)
+  One f <*> Two x1 x2 = Two (f x1) (f x2)
+  Two f1 f2 <*> One x = Two (f1 x) (f2 x)
+  Two f1 f2 <*> Two x1 x2 = Two (f1 x1) (f2 x2)
+
+instance Monad Two where
+  return = One
+  None >>= _ = None
+  One x >>= f = f x
+  Two x1 x2 >>= f = go (_toFirst (f x1)) (_toSecond (f x2))
+    where go None x = x
+          go x None = x
+          go (One x) (One y) = Two x y
+          go _ _ = error "This should never happen!"
 
 data BoundElement a
   = Excluding a
@@ -132,7 +186,7 @@ oppositeInterval :: BasicInterval a -> Two (BasicInterval a)
 oppositeInterval Full = None
 oppositeInterval (Lower i) = One (Upper (_mirror i))
 oppositeInterval (Upper i) = One (Lower (_mirror i))
-oppositeInterval (BasicInterval l u) = Two (Lower (_mirror l)) (Upper (_mirror u))
+oppositeInterval (BasicInterval l u) = Two (Upper (_mirror l)) (Lower (_mirror u))
 
 pattern Lower, Upper :: BoundElement a -> BasicInterval a
 pattern Lower x = BasicInterval x Infinity
@@ -142,16 +196,13 @@ pattern Full :: BasicInterval a
 pattern Full = BasicInterval Infinity Infinity
 
 _compare' :: Ord a => BoundElement a -> BoundElement a -> Ordering
-_compare' Infinity = go
-  where go Infinity = EQ
-        go _ = LT
-_compare' (Including v) = go
-  where go Infinity = GT
-        go (Including v') = compare v v'
-        go (Excluding _) = LT
-_compare' (Excluding v) = go
-  where go (Excluding v') = compare v' v
-        go _ = GT
+_compare' Infinity Infinity = EQ
+_compare' Infinity _ = LT
+_compare' _ Infinity = GT
+_compare' (Including v1) (Including v2) = compare v1 v2
+_compare' (Including v1) (Excluding v2) = compare v1 v2 <> LT
+_compare' (Excluding v1) (Including v2) = compare v1 v2 <> GT
+_compare' (Excluding v1) (Excluding v2) = compare v1 v2
 
 _compare'' :: Ord a => BasicInterval a -> BasicInterval a -> Ordering
 _compare'' ~(BasicInterval l1 u1) ~(BasicInterval l2 u2) = _compare' l1 l2 <> _compare' u1 u2
