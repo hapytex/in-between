@@ -106,6 +106,18 @@ data IntervalRelation
   | NoOverlap
   deriving (Eq, Ord, Read, Show)
 
+class BaseInterval i where
+  toBasicInterval :: i a -> BasicInterval a
+
+instance BaseInterval BasicInterval where
+  toBasicInterval = id
+
+instance BaseInterval LowerBound where
+  toBasicInterval ~(LowerBound l) = BasicInterval l Infinity
+
+instance BaseInterval UpperBound where
+  toBasicInterval ~(UpperBound u) = BasicInterval Infinity u
+
 class CheckInterval i a | i -> a where
   isElement :: a -> i -> Bool
   isElement x = not . isNotElement x
