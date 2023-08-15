@@ -6,16 +6,43 @@
 
 module Data.Interval.Basic where
 
+data Two a
+  = None
+  | One a
+  | Two a
+  deriving (Eq, Functor, Read, Show)
+
 data BoundElement a
-  = Including a
-  | Excluding a
+  = Excluding a
+  | Including a
   | Infinity
   deriving (Eq, Functor, Read, Show)
 
+newtype LowerBound a = LowerBound (BoundElement a) deriving (Eq, Functor, Read, Show)
+newtype UpperBound a = UpperBound (BoundElement a) deriving (Eq, Functor, Read, Show)
+
+instance Ord a => Ord (LowerBound a) where
+  compare ~(LowerBound l1) ~(LowerBound l2) = _compare' l1 l2
+
+instance Ord a => Semigroup (LowerBound a) where
+  (<>) = max
+
+instance Ord a => Monoid (LowerBound a) where
+  mempty = LowerBound Infinity
+
+instance Ord a => Ord (UpperBound a) where
+  compare ~(UpperBound u1) ~(UpperBound u2) = _compare' u2 u1  -- swapped
+
+instance Ord a => Semigroup (UpperBound a) where
+  (<>) = min
+
+instance Ord a => Monoid (UpperBound a) where
+  mempty = UpperBound Infinity
+
 _mirror :: BoundElement a -> BoundElement a
-_mirror Infinity = Infinity
 _mirror (Including x) = Excluding x
 _mirror (Excluding x) = Including x
+_mirror x = x
 
 data IntervalRelation
   = Equal
@@ -36,7 +63,15 @@ class CheckInterval i a | i -> a where
 
   isNotEmpty :: i -> Bool
   isNotEmpty = not . isEmpty
-  {-# MINIMAL (isElement | isNotElement), (isEmpty, isNotEmpty) #-}
+  {-# MINIMAL (isElement | isNotElement), (isEmpty | isNotEmpty) #-}
+
+instance Ord a => CheckInterval (LowerBound a) a where
+  isElement x (LowerBound l) = lowerConstraint l x
+  isEmpty = const False
+
+instance Ord a => CheckInterval (UpperBound a) a where
+  isElement x (UpperBound u) = upperConstraint u x
+  isEmpty = const False
 
 instance Ord a => CheckInterval (BasicInterval a) a where
   isElement x (BasicInterval l u) = lowerConstraint l x && upperConstraint u x
@@ -76,6 +111,23 @@ data BasicInterval a
   = BasicInterval (BoundElement a) (BoundElement a)
   deriving (Eq, Read, Show)
 
+toBounds :: BasicInterval a -> (LowerBound a, UpperBound a)
+toBounds (BasicInterval l u) = (LowerBound l, UpperBound u)
+
+fromBounds :: LowerBound a -> UpperBound a -> BasicInterval a
+fromBounds (LowerBound l) (UpperBound u) = BasicInterval l u
+
+intersect :: Ord a => BasicInterval a -> BasicInterval a -> BasicInterval a
+intersect b1 b2 = fromBounds (l1 <> l2) (u1 <> u2)
+  where ~(l1, u1) = toBounds b1
+        ~(l2, u2) = toBounds b2
+
+instance Ord a => Semigroup (BasicInterval a) where
+  (<>) = intersect
+
+instance Ord a => Monoid (BasicInterval a) where
+  mempty = Full
+
 pattern Lower, Upper :: BoundElement a -> BasicInterval a
 pattern Lower x = BasicInterval x Infinity
 pattern Upper x = BasicInterval Infinity x
@@ -86,15 +138,14 @@ pattern Full = BasicInterval Infinity Infinity
 _compare' :: Ord a => BoundElement a -> BoundElement a -> Ordering
 _compare' Infinity = go
   where go Infinity = EQ
-        go _ = GT
+        go _ = LT
 _compare' (Including v) = go
-  where go Infinity = LT
+  where go Infinity = GT
         go (Including v') = compare v v'
         go (Excluding _) = LT
 _compare' (Excluding v) = go
-  where go Infinity = LT
-        go (Including _) = GT
-        go (Excluding v') = compare v' v
+  where go (Excluding v') = compare v' v
+        go _ = GT
 
 _compare'' :: Ord a => BasicInterval a -> BasicInterval a -> Ordering
 _compare'' ~(BasicInterval l1 u1) ~(BasicInterval l2 u2) = _compare' l1 l2 <> _compare' u1 u2
@@ -114,9 +165,6 @@ _formatInterval sc so ec eo = form
         go Infinity = f o (i "∞" ++)
         go (Including v) = f c (showsPrec 10 v)
         go (Excluding v) = f o (showsPrec 10 v)
-
-excluding :: BasicInterval a -> BasicInterval a -> BasicInterval a
-excluding = undefined
 
 basicIntervalToStringS :: Show a => BasicInterval a -> ShowS
 basicIntervalToStringS = _formatInterval "[" "(" "]" ")"
